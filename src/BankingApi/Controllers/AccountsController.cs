@@ -33,9 +33,32 @@ public class AccountsController : ControllerBase
             request.OwnerName, request.AccountNumber, request.InitialDeposit, ct);
         return CreatedAtAction(nameof(GetById), new { id = account.Id }, account);
     }
+
+    [HttpPost("{id:guid}/debit")]
+    public async Task<IActionResult> Debit(Guid id, [FromBody] AmountRequest request, CancellationToken ct)
+    {
+        await _accounts.DebitAsync(id, request.Amount, ct);
+        return Ok();
+    }
+
+    [HttpPost("{id:guid}/credit")]
+    public async Task<IActionResult> Credit(Guid id, [FromBody] AmountRequest request, CancellationToken ct)
+    {
+        await _accounts.CreditAsync(id, request.Amount, ct);
+        return Ok();
+    }
+
+    [HttpPost("batch-transfer")]
+    public async Task<IActionResult> BatchTransfer([FromBody] IEnumerable<TransferRequest> requests, CancellationToken ct)
+    {
+        var results = await _accounts.ProcessBatchAsync(requests, ct);
+        return Ok(results);
+    }
 }
 
 public record OpenAccountRequest(
     string OwnerName,
     string AccountNumber,
     decimal InitialDeposit);
+
+public record AmountRequest(decimal Amount);
