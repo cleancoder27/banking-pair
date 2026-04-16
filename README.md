@@ -1,7 +1,6 @@
 # BankingApi
 
-Simple checking account API — used for a pair-programming interview session.
-
+Simple checking account API
 ## Quick start
 
 ```bash
