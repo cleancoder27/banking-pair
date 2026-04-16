@@ -30,12 +30,36 @@ public class AccountsController : ControllerBase
         [FromBody] OpenAccountRequest request, CancellationToken ct)
     {
         var account = await _accounts.OpenAccountAsync(
-            request.OwnerName, request.AccountNumber, request.InitialDeposit, ct);
+            request.OwnerName, request.AccountNumber,
+            request.InitialDeposit, request.AccountType, ct);
         return CreatedAtAction(nameof(GetById), new { id = account.Id }, account);
     }
+
+    [HttpPost("{id:guid}/deposit")]
+    public async Task<IActionResult> Deposit(Guid id,
+        [FromBody] AmountRequest request, CancellationToken ct)
+    {
+        var success = await _accounts.DepositAsync(id, request.Amount, ct);
+        return success ? Ok() : NotFound();
+    }
+
+    [HttpPost("{id:guid}/withdraw")]
+    public async Task<IActionResult> Withdraw(Guid id,
+        [FromBody] AmountRequest request, CancellationToken ct)
+    {
+        var success = await _accounts.WithdrawAsync(id, request.Amount, ct);
+        return success ? Ok() : BadRequest("Withdrawal failed.");
+    }
+
+    [HttpGet("report")]
+    public async Task<IActionResult> Report(CancellationToken ct) =>
+        Ok(await _accounts.GenerateAccountReportAsync(ct));
 }
 
 public record OpenAccountRequest(
     string OwnerName,
     string AccountNumber,
-    decimal InitialDeposit);
+    decimal InitialDeposit,
+    string AccountType = "Checking");
+
+public record AmountRequest(decimal Amount);
