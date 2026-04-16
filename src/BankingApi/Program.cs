@@ -1,3 +1,4 @@
+using BankingApi.Middleware;
 using BankingApi.Repositories;
 using BankingApi.Services;
 
@@ -11,6 +12,7 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 
 var app = builder.Build();
 
+app.UseMiddleware<ExceptionHandlingMiddleware>(); // must be first
 app.UseSwagger();
 app.UseSwaggerUI();
 app.MapControllers();
