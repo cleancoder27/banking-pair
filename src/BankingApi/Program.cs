@@ -12,7 +12,8 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 
 var app = builder.Build();
 
-app.UseMiddleware<ExceptionHandlingMiddleware>(); // must be first
+app.UseMiddleware<ExceptionHandlingMiddleware>();  // 1st — outermost, catches everything
+app.UseMiddleware<RequestLoggingMiddleware>();     // 2nd — logs every request with correlation ID
 app.UseSwagger();
 app.UseSwaggerUI();
 app.MapControllers();

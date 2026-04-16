@@ -7,10 +7,14 @@ namespace BankingApi.Services;
 public class AccountService : IAccountService
 {
     private readonly IAccountRepository _repository;
+    private readonly ILogger<AccountService> _logger;
 
-    public AccountService(IAccountRepository repository)
+    public AccountService(
+        IAccountRepository repository,
+        ILogger<AccountService> logger)
     {
         _repository = repository;
+        _logger = logger;
     }
 
     public Task<Account?> GetAccountAsync(Guid id, CancellationToken ct = default) =>
@@ -33,7 +37,12 @@ public class AccountService : IAccountService
             Balance = initialDeposit
         };
 
-        return await _repository.AddAsync(account, ct);
+        var created = await _repository.AddAsync(account, ct);
+
+        _logger.LogInformation("Account opened for {OwnerName} with number {AccountNumber}",
+            ownerName, accountNumber);
+
+        return created;
     }
 
     public async Task DebitAsync(Guid accountId, decimal amount, CancellationToken ct = default)
@@ -46,6 +55,9 @@ public class AccountService : IAccountService
 
         account.Balance -= amount;
         await _repository.UpdateAsync(account, ct);
+
+        _logger.LogInformation("Debited {Amount} from account {AccountId}. New balance: {Balance}",
+            amount, accountId, account.Balance);
     }
 
     public async Task CreditAsync(Guid accountId, decimal amount, CancellationToken ct = default)
@@ -55,6 +67,9 @@ public class AccountService : IAccountService
 
         account.Balance += amount;
         await _repository.UpdateAsync(account, ct);
+
+        _logger.LogInformation("Credited {Amount} to account {AccountId}. New balance: {Balance}",
+            amount, accountId, account.Balance);
     }
 
     public async Task<IEnumerable<TransferResult>> ProcessBatchAsync(
@@ -71,6 +86,8 @@ public class AccountService : IAccountService
 
             if (!lookup.TryGetValue(req.FromAccountId, out var from))
             {
+                _logger.LogWarning("Batch transfer skipped — source account {AccountId} not found",
+                    req.FromAccountId);
                 results.Add(new TransferResult(req.FromAccountId, req.ToAccountId,
                     false, $"Source account {req.FromAccountId} not found."));
                 continue;
@@ -78,6 +95,8 @@ public class AccountService : IAccountService
 
             if (!lookup.TryGetValue(req.ToAccountId, out var to))
             {
+                _logger.LogWarning("Batch transfer skipped — destination account {AccountId} not found",
+                    req.ToAccountId);
                 results.Add(new TransferResult(req.FromAccountId, req.ToAccountId,
                     false, $"Destination account {req.ToAccountId} not found."));
                 continue;
@@ -85,6 +104,8 @@ public class AccountService : IAccountService
 
             if (from.Balance < req.Amount)
             {
+                _logger.LogWarning("Batch transfer skipped — insufficient funds on account {AccountId}",
+                    req.FromAccountId);
                 results.Add(new TransferResult(req.FromAccountId, req.ToAccountId,
                     false, $"Insufficient funds. Available: {from.Balance}, Requested: {req.Amount}."));
                 continue;
@@ -94,6 +115,9 @@ public class AccountService : IAccountService
             to.Balance += req.Amount;
             await _repository.UpdateAsync(from, ct);
             await _repository.UpdateAsync(to, ct);
+
+            _logger.LogInformation("Batch transfer of {Amount} from {FromId} to {ToId} succeeded",
+                req.Amount, req.FromAccountId, req.ToAccountId);
 
             results.Add(new TransferResult(req.FromAccountId, req.ToAccountId, true, null));
         }

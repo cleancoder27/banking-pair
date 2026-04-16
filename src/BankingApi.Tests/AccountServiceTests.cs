@@ -1,6 +1,7 @@
 using BankingApi.Exceptions;
 using BankingApi.Repositories;
 using BankingApi.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace BankingApi.Tests;
@@ -8,7 +9,7 @@ namespace BankingApi.Tests;
 public class AccountServiceTests
 {
     private static AccountService BuildService() =>
-        new AccountService(new InMemoryAccountRepository());
+        new AccountService(new InMemoryAccountRepository(), NullLogger<AccountService>.Instance);
 
     [Fact]
     public async Task OpenAccount_WithValidDeposit_ReturnsAccount()
